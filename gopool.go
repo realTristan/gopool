@@ -1,4 +1,4 @@
-package main
+package gopool
 
 import (
 	"errors"
@@ -20,6 +20,7 @@ type Connection struct {
 	enabled bool
 	active  bool
 	client  *Client[any]
+	mutex   *sync.RWMutex
 }
 
 // Initialize the Connection Pool
@@ -36,7 +37,29 @@ func InitConn(client *Client[any]) *Connection {
 		enabled: true,
 		active:  false,
 		client:  client,
+		mutex:   &sync.RWMutex{},
 	}
+}
+
+// Get the client from the connection
+func (c *Connection) Client() *Client[any] {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+	return c.client
+}
+
+// Get whether the current connection is active
+func (c *Connection) IsActive() bool {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+	return c.active
+}
+
+// Get whether the current connection is enabled
+func (c *Connection) IsEnabled() bool {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+	return c.enabled
 }
 
 // Disable a connection in the connection pool
@@ -46,6 +69,8 @@ func (p *Pool) Disable(conn *Connection) error {
 	if _, ok := p.connections[conn]; !ok {
 		return errors.New("connection does not exist")
 	}
+	conn.mutex.RLock()
+	defer conn.mutex.RUnlock()
 	p.connections[conn]["enabled"] = false
 	return nil
 }
@@ -57,6 +82,8 @@ func (p *Pool) Enable(conn *Connection) error {
 	if _, ok := p.connections[conn]; !ok {
 		return errors.New("connection does not exist")
 	}
+	conn.mutex.RLock()
+	defer conn.mutex.RUnlock()
 	p.connections[conn]["enabled"] = true
 	return nil
 }
@@ -70,6 +97,8 @@ func (p *Pool) Add(conn *Connection) error {
 	if _, ok := p.connections[conn]; ok {
 		return errors.New("connection already exists")
 	}
+	conn.mutex.RLock()
+	defer conn.mutex.RUnlock()
 	p.connections[conn] = make(map[string]bool)
 	return nil
 }
@@ -101,10 +130,13 @@ for conn == nil || err != nil {
 func (p *Pool) Get() (*Connection, error) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
-	for k, v := range p.connections {
+	for conn, v := range p.connections {
+		conn.mutex.RLock()
 		if !v["active"] && v["enabled"] {
-			return k, nil
+			conn.mutex.RUnlock()
+			return conn, nil
 		}
+		conn.mutex.RUnlock()
 	}
 	return nil, errors.New("no connections are available")
 }
@@ -125,32 +157,4 @@ func (p *Pool) GetTimeout(timeout int64) (*Connection, error) {
 		}
 	}
 	return conn, nil
-}
-
-// Get the client from the connection
-func (c *Connection) Client() *Client[any] {
-	return c.client
-}
-
-// Get whether the current connection is active
-func (c *Connection) IsActive() bool {
-	return c.active
-}
-
-// Get whether the current connection is enabled
-func (c *Connection) IsEnabled() bool {
-	return c.enabled
-}
-
-// Main function for testing/examples
-func main() {
-	// Initialize a pool
-	var pool *Pool = InitPool()
-
-	// Initalize a connection
-	var client *Client[any] = nil
-	var conn = InitConn(client)
-
-	// Add the connection to the pool
-	pool.Add(conn)
 }
