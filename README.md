@@ -1,4 +1,5 @@
 # gopool ![Stars](https://img.shields.io/github/stars/realTristan/gopool?color=brightgreen) ![Watchers](https://img.shields.io/github/watchers/realTristan/gopool?label=Watchers)
+![image-6](https://user-images.githubusercontent.com/75189508/234116253-eec9af68-66c5-44a4-8c30-cf82dbf936c1.png)
 
 # Example
 ```go
