@@ -5,6 +5,7 @@ type Connection struct {
 	enabled bool
 	active  bool
 	client  *Client[any]
+	expire  int64
 }
 
 // Set a connection activity. Define in a function to enable defering

@@ -15,7 +15,9 @@ func main() {
 	var client *gp.Client[any] = nil // whatever your client is
 
 	// Add the connection to the pool
-	pool.New(client)
+	// Expire in 10 seconds, -1 for no expiration
+	var expire int64 = 10
+	pool.New(client, expire)
 
 	// Access a connection from the pool
 	pool.WithConnection(func(conn *gp.Connection, opts *gp.Options) any {

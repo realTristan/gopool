@@ -21,15 +21,22 @@ func InitPool() *Pool {
 }
 
 // Add a new connection to the connection pool
-func (p *Pool) New(client *Client[any]) error {
+func (p *Pool) New(client *Client[any], expire int64) error {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
+
+	// If the provided expiration is greater than 0
+	// aka the user wants to set an expiration...
+	if expire > 0 {
+		expire = time.Now().Unix() + expire
+	}
 
 	// Create a new connection
 	var conn *Connection = &Connection{
 		enabled: true,
 		active:  false,
 		client:  client,
+		expire:  expire,
 	}
 
 	// Append the connection to the existing pool connections
@@ -99,6 +106,12 @@ func (p *Pool) get() (*Connection, error) {
 		var conn *Connection = p.connections[i]
 		if !conn.active && conn.enabled {
 			return conn, nil
+		}
+		if !conn.active && conn.expire > 0 {
+			if time.Now().UnixMilli()-conn.expire >= 0 {
+				delete(p, conn)
+				continue
+			}
 		}
 	}
 	return nil, errors.New("no connections are available")

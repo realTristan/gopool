@@ -1,6 +1,8 @@
 package main
 
-import gp "github.com/realTristan/gopool"
+import (
+	gp "github.com/realTristan/gopool"
+)
 
 // Main function for testing/examples
 func main() {
@@ -11,7 +13,8 @@ func main() {
 	var client *gp.Client[any] = nil // whatever your client is
 
 	// Add the connection to the pool
-	pool.New(client)
+	// Expire in 10 seconds, -1 for no expiration
+	pool.New(client, 10)
 
 	// Access a connection from the pool
 	var _, _ = pool.WithConnection(func(conn *gp.Connection, opts *gp.Options) any {
