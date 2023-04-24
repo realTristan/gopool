@@ -37,6 +37,52 @@ func (p *Pool) New(client *Client[any]) error {
 	return nil
 }
 
+// Execute a function with a pool connection
+func (p *Pool) WithConnection(fn func(c *Connection, opts *Options) any) (any, error) {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
+	// Get a connection from the connections pool
+	if conn, err := p.get(); err != nil {
+		return nil, err
+	} else {
+		// Set the connection to active
+		conn.setConnectionActivity(true)
+		defer conn.setConnectionActivity(false)
+
+		// Execute the function
+		return fn(conn, &Options{
+			Delete:    delete,
+			Enable:    enable,
+			Disable:   disable,
+			IsEnabled: isEnabled,
+		}), nil
+	}
+}
+
+// Execute a function with a pool connection
+func (p *Pool) WithConnectionTimeout(timeout int64, fn func(c *Connection, opts *Options) any) (any, error) {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
+	// Get a connection from the connections pool
+	if conn, err := p.getTimeout(timeout); err != nil {
+		return nil, err
+	} else {
+		// Set the connection to active
+		conn.setConnectionActivity(true)
+		defer conn.setConnectionActivity(false)
+
+		// Execute the function
+		return fn(conn, &Options{
+			Delete:    delete,
+			Enable:    enable,
+			Disable:   disable,
+			IsEnabled: isEnabled,
+		}), nil
+	}
+}
+
 // Check if a connection exists in the connection pool
 func (p *Pool) exists(conn *Connection) bool {
 	for i := 0; i < len(p.connections); i++ {
@@ -48,18 +94,6 @@ func (p *Pool) exists(conn *Connection) bool {
 }
 
 // Get a connection from the connection pool
-/*
-
-var (
-	conn *Connection = nil
-	err error = nil
-)
-
-for conn == nil || err != nil {
-	conn, err = p.Get()
-}
-
-*/
 func (p *Pool) get() (*Connection, error) {
 	for i := 0; i < len(p.connections); i++ {
 		var conn *Connection = p.connections[i]
@@ -84,9 +118,4 @@ func (p *Pool) getTimeout(timeout int64) (*Connection, error) {
 		}
 	}
 	return conn, nil
-}
-
-// Set a connection activity. Define in a function to enable defering
-func (conn *Connection) setConnectionActivity(activity bool) {
-	conn.active = activity
 }

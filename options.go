@@ -10,6 +10,11 @@ type Options struct {
 	IsEnabled func(conn *Connection) bool
 }
 
+// Check if the connection is enabled
+func isEnabled(conn *Connection) bool {
+	return conn.enabled
+}
+
 // Disable a connection in the connection pool
 func disable(p *Pool, conn *Connection) error {
 	// Check if the provided connection already exists
@@ -56,9 +61,4 @@ func delete(p *Pool, conn *Connection) error {
 		}
 	}
 	return nil
-}
-
-// Check if the connection is enabled
-func isEnabled(conn *Connection) bool {
-	return conn.enabled
 }
