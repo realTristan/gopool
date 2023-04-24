@@ -8,7 +8,7 @@ func main() {
 	var pool *gp.Pool = gp.InitPool()
 
 	// Initalize a connection
-	var client *gp.Client[any] = nil
+	var client *gp.Client[any] = nil // whatever your client is
 
 	// Add the connection to the pool
 	pool.New(client)
