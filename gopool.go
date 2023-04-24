@@ -41,27 +41,6 @@ func InitConn(client *Client[any]) *Connection {
 	}
 }
 
-// Get the client from the connection
-func (c *Connection) Client() *Client[any] {
-	c.mutex.RLock()
-	defer c.mutex.RUnlock()
-	return c.client
-}
-
-// Get whether the current connection is active
-func (c *Connection) IsActive() bool {
-	c.mutex.RLock()
-	defer c.mutex.RUnlock()
-	return c.active
-}
-
-// Get whether the current connection is enabled
-func (c *Connection) IsEnabled() bool {
-	c.mutex.RLock()
-	defer c.mutex.RUnlock()
-	return c.enabled
-}
-
 // Disable a connection in the connection pool
 func (p *Pool) Disable(conn *Connection) error {
 	p.mutex.Lock()
@@ -157,4 +136,36 @@ func (p *Pool) GetTimeout(timeout int64) (*Connection, error) {
 		}
 	}
 	return conn, nil
+}
+
+// Check if the connection is active
+func (conn *Connection) IsActive() bool {
+	conn.mutex.RLock()
+	defer conn.mutex.RUnlock()
+	return conn.active
+}
+
+// Check if the connection is enabled
+func (conn *Connection) IsEnabled() bool {
+	conn.mutex.RLock()
+	defer conn.mutex.RUnlock()
+	return conn.active
+}
+
+// Get the connection client
+func (conn *Connection) WithClient(fn func(c Client[any]) any) any {
+	return fn(*conn.client)
+}
+
+// Execute a function with a pool connection
+func (p *Pool) WithConnection(conn *Connection, fn func(c Connection) any) any {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
+	// Connection Mutex Lock
+	conn.mutex.RLock()
+	defer conn.mutex.RUnlock()
+
+	// Execute the function
+	return fn(*conn)
 }
