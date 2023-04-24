@@ -132,6 +132,16 @@ func (c *Connection) Client() *Client[any] {
 	return c.client
 }
 
+// Get whether the current connection is active
+func (c *Connection) IsActive() bool {
+	return c.active
+}
+
+// Get whether the current connection is enabled
+func (c *Connection) IsEnabled() bool {
+	return c.enabled
+}
+
 // Main function for testing/examples
 func main() {
 	// Initialize a pool
@@ -143,5 +153,4 @@ func main() {
 
 	// Add the connection to the pool
 	pool.Add(conn)
-
 }
