@@ -32,8 +32,6 @@ func (q *ConnectionQueue) next() *Connection {
 
 	// Else, set the queue items to all those beyond the first index
 	q.connections = q.connections[1:]
-
-	// Return the item
 	return conn
 }
 
@@ -68,7 +66,7 @@ func (q *ConnectionQueue) delete(item *Connection) error {
 	// Iterate over the queue items
 	for i := 0; i < len(q.connections); i++ {
 		if q.connections[i] == item {
-			q.connections = append(q.connections[i:], q.connections[i+1:]...)
+			q.connections = append(q.connections[:i], q.connections[i+1:]...)
 			return nil
 		}
 	}

@@ -122,7 +122,7 @@ func (p *Pool) WithConnection(fn func(c *Connection, opts *Options) any) (any, e
 
 		// Execute the function
 		return fn(conn, &Options{
-			ExpiresIn: func(conn *Connection) int64 {
+			ExpiresAt: func(conn *Connection) int64 {
 				var copy int64 = conn.expire
 				return copy
 			},
@@ -144,7 +144,7 @@ func (p *Pool) WithConnectionTimeout(timeout int64, fn func(c Connection, opts *
 
 		// Execute the function
 		return fn(*conn, &Options{
-			ExpiresIn: func(conn *Connection) int64 {
+			ExpiresAt: func(conn *Connection) int64 {
 				var copy int64 = conn.expire
 				return copy
 			},
