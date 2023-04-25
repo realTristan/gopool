@@ -1,4 +1,4 @@
 package gopool
 
 // Connection Client Struct
-type Client any
+type Client[T any] *T

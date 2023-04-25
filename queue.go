@@ -6,13 +6,13 @@ import (
 )
 
 // Item Queue Struct
-type ConnectionQueue struct {
+type ConnectionQueue[T any] struct {
 	mutex       *sync.RWMutex
-	connections []*Connection
+	connections []*Connection[T]
 }
 
 // Get an item and remove it from the queue
-func (q *ConnectionQueue) next() *Connection {
+func (q *ConnectionQueue[T]) next() *Connection[T] {
 	q.mutex.Lock()
 	defer q.mutex.Unlock()
 
@@ -22,11 +22,11 @@ func (q *ConnectionQueue) next() *Connection {
 	}
 
 	// Get the item from the queue
-	var conn *Connection = q.connections[0]
+	var conn *Connection[T] = q.connections[0]
 
 	// If the queue size is just 1
 	if len(q.connections) == 1 {
-		q.connections = []*Connection{}
+		q.connections = []*Connection[T]{}
 		return conn
 	}
 
@@ -36,7 +36,7 @@ func (q *ConnectionQueue) next() *Connection {
 }
 
 // Check if a client already exists in the pool
-func (q *ConnectionQueue) clientExists(c *Client) bool {
+func (q *ConnectionQueue[T]) clientExists(c *Client[T]) bool {
 	q.mutex.RLock()
 	defer q.mutex.RUnlock()
 
@@ -50,7 +50,7 @@ func (q *ConnectionQueue) clientExists(c *Client) bool {
 }
 
 // Add an item to the queue
-func (q *ConnectionQueue) add(item *Connection) {
+func (q *ConnectionQueue[T]) add(item *Connection[T]) {
 	q.mutex.Lock()
 	defer q.mutex.Unlock()
 
@@ -59,7 +59,7 @@ func (q *ConnectionQueue) add(item *Connection) {
 }
 
 // Delete an item from the queue
-func (q *ConnectionQueue) delete(item *Connection) error {
+func (q *ConnectionQueue[T]) delete(item *Connection[T]) error {
 	q.mutex.Lock()
 	defer q.mutex.Unlock()
 

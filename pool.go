@@ -7,37 +7,37 @@ import (
 )
 
 // Connection Pool Struct *Connection
-type Pool struct {
+type Pool[T any] struct {
 	maxConnections     int
 	currentConnections int
 	mutex              *sync.RWMutex
-	connections        *ConnectionQueue
+	connections        *ConnectionQueue[T]
 }
 
 // Initialize the Connection Pool
-func InitPool(maxSize int) *Pool {
-	return &Pool{
+func InitPool[T any](maxSize int) *Pool[T] {
+	return &Pool[T]{
 		maxConnections:     maxSize,
 		currentConnections: 0,
 		mutex:              &sync.RWMutex{},
-		connections: &ConnectionQueue{
+		connections: &ConnectionQueue[T]{
 			mutex:       &sync.RWMutex{},
-			connections: []*Connection{},
+			connections: []*Connection[T]{},
 		},
 	}
 }
 
 // Get the current pool size
-func (p *Pool) Size() (int, int) {
+func (p *Pool[T]) Size() (int, int) {
 	var (
 		copyCurSize int = p.currentConnections
 		copyMaxSize int = p.maxConnections
 	)
-	return copyCurSize, copyMaxSize
+	return copyMaxSize, copyCurSize
 }
 
 // Add a new connection to the connection pool
-func (p *Pool) Add(client *Client, expire int64) error {
+func (p *Pool[T]) Add(client *Client[T], expire int64, onExpire func(client *Client[T])) error {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
@@ -58,9 +58,10 @@ func (p *Pool) Add(client *Client, expire int64) error {
 	}
 
 	// Append the connection to the existing pool connections
-	p.connections.add(&Connection{
-		client: client,
-		expire: expire,
+	p.connections.add(&Connection[T]{
+		client:   client,
+		expire:   expire,
+		onExpire: onExpire,
 	})
 
 	// Increase the current pool size
@@ -71,8 +72,8 @@ func (p *Pool) Add(client *Client, expire int64) error {
 }
 
 // Get a connection from the connection pool
-func (p *Pool) get() (*Connection, error) {
-	var conn *Connection = p.connections.next()
+func (p *Pool[T]) get() (*Connection[T], error) {
+	var conn *Connection[T] = p.connections.next()
 	if conn == nil {
 		return nil, errors.New("no connections are available")
 	}
@@ -81,6 +82,7 @@ func (p *Pool) get() (*Connection, error) {
 	if conn.expire > 0 && conn.expire-time.Now().UnixMilli() <= 0 {
 		if err := p.connections.delete(conn); err == nil {
 			p.currentConnections--
+			conn.onExpire(conn.client)
 		}
 		return p.get()
 	}
@@ -90,11 +92,11 @@ func (p *Pool) get() (*Connection, error) {
 }
 
 // Continuously fetch for a connection until the timeout time has been reached
-func (p *Pool) getTimeout(timeout int64) (*Connection, error) {
+func (p *Pool[T]) getTimeout(timeout int64) (*Connection[T], error) {
 	var (
-		start int64       = time.Now().UnixMilli()
-		conn  *Connection = nil
-		err   error       = nil
+		start int64          = time.Now().UnixMilli()
+		conn  *Connection[T] = nil
+		err   error          = nil
 	)
 	for conn == nil || err != nil {
 		// Check if the provided timeout has been reached
@@ -109,7 +111,7 @@ func (p *Pool) getTimeout(timeout int64) (*Connection, error) {
 }
 
 // Execute a function with a pool connection
-func (p *Pool) WithConnection(fn func(c *Connection, opts *Options) any) (any, error) {
+func (p *Pool[T]) WithConnection(fn func(c *Connection[T], opts *Options[T]) any) (any, error) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
@@ -121,8 +123,8 @@ func (p *Pool) WithConnection(fn func(c *Connection, opts *Options) any) (any, e
 		defer p.connections.add(conn)
 
 		// Execute the function
-		return fn(conn, &Options{
-			ExpiresAt: func(conn *Connection) int64 {
+		return fn(conn, &Options[T]{
+			ExpiresAt: func(conn *Connection[T]) int64 {
 				var copy int64 = conn.expire
 				return copy
 			},
@@ -131,7 +133,7 @@ func (p *Pool) WithConnection(fn func(c *Connection, opts *Options) any) (any, e
 }
 
 // Execute a function with a pool connection
-func (p *Pool) WithConnectionTimeout(timeout int64, fn func(c Connection, opts *Options) any) (any, error) {
+func (p *Pool[T]) WithConnectionTimeout(timeout int64, fn func(c Connection[T], opts *Options[T]) any) (any, error) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
@@ -143,8 +145,8 @@ func (p *Pool) WithConnectionTimeout(timeout int64, fn func(c Connection, opts *
 		defer p.connections.add(conn)
 
 		// Execute the function
-		return fn(*conn, &Options{
-			ExpiresAt: func(conn *Connection) int64 {
+		return fn(*conn, &Options[T]{
+			ExpiresAt: func(conn *Connection[T]) int64 {
 				var copy int64 = conn.expire
 				return copy
 			},
