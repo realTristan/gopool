@@ -16,7 +16,7 @@ func main() {
 	pool.Add(client, 10)
 
 	// Access a connection from the pool
-	pool.WithConnection(func(conn *gp.Connection) any {
+	pool.WithConnection(func(conn *gp.Connection, opts *gp.Options) any {
 		// Use the connection client
 		conn.WithClient(func(client gp.Client) any {
 			// await client. (... whatever you're trying to do with your database client)
@@ -27,7 +27,7 @@ func main() {
 
 	// Access a connection from the pool with a connection timeout
 	var timeout int64 = 1000 // 1000 milliseconds till timeout (1 second)
-	pool.WithConnectionTimeout(timeout, func(conn gp.Connection) any {
+	pool.WithConnectionTimeout(timeout, func(conn gp.Connection, opts *gp.Options) any {
 		// Use the connection client
 		conn.WithClient(func(client gp.Client) any {
 			// await client. (... whatever you're trying to do with your database client)

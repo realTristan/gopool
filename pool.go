@@ -8,21 +8,21 @@ import (
 
 // Connection Pool Struct *Connection
 type Pool struct {
-	maxSize     int
-	currentSize int
-	mutex       *sync.RWMutex
-	connections *Queue
+	maxConnections     int
+	currentConnections int
+	mutex              *sync.RWMutex
+	connections        *ConnectionQueue
 }
 
 // Initialize the Connection Pool
 func InitPool(maxSize int) *Pool {
 	return &Pool{
-		maxSize:     maxSize,
-		currentSize: 0,
-		mutex:       &sync.RWMutex{},
-		connections: &Queue{
-			mutex: &sync.RWMutex{},
-			items: []*Connection{},
+		maxConnections:     maxSize,
+		currentConnections: 0,
+		mutex:              &sync.RWMutex{},
+		connections: &ConnectionQueue{
+			mutex:       &sync.RWMutex{},
+			connections: []*Connection{},
 		},
 	}
 }
@@ -30,8 +30,8 @@ func InitPool(maxSize int) *Pool {
 // Get the current pool size
 func (p *Pool) Size() (int, int) {
 	var (
-		copyCurSize int = p.currentSize
-		copyMaxSize int = p.maxSize
+		copyCurSize int = p.currentConnections
+		copyMaxSize int = p.maxConnections
 	)
 	return copyCurSize, copyMaxSize
 }
@@ -42,7 +42,7 @@ func (p *Pool) Add(client *Client, expire int64) error {
 	defer p.mutex.Unlock()
 
 	// Check if the maximum pool connection has been reached
-	if p.currentSize+1 > p.maxSize {
+	if p.currentConnections+1 > p.maxConnections {
 		return errors.New("maximum pool capacity reached")
 	}
 
@@ -64,7 +64,7 @@ func (p *Pool) Add(client *Client, expire int64) error {
 	})
 
 	// Increase the current pool size
-	p.currentSize++
+	p.currentConnections++
 
 	// Return no errors
 	return nil
@@ -80,7 +80,7 @@ func (p *Pool) get() (*Connection, error) {
 	// If the connection is not active and has expired
 	if conn.expire > 0 && conn.expire-time.Now().UnixMilli() <= 0 {
 		if err := p.connections.delete(conn); err == nil {
-			p.currentSize--
+			p.currentConnections--
 		}
 		return p.get()
 	}
@@ -109,7 +109,7 @@ func (p *Pool) getTimeout(timeout int64) (*Connection, error) {
 }
 
 // Execute a function with a pool connection
-func (p *Pool) WithConnection(fn func(c *Connection) any) (any, error) {
+func (p *Pool) WithConnection(fn func(c *Connection, opts *Options) any) (any, error) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
@@ -121,12 +121,17 @@ func (p *Pool) WithConnection(fn func(c *Connection) any) (any, error) {
 		defer p.connections.add(conn)
 
 		// Execute the function
-		return fn(conn), nil
+		return fn(conn, &Options{
+			ExpiresIn: func(conn *Connection) int64 {
+				var copy int64 = conn.expire
+				return copy
+			},
+		}), nil
 	}
 }
 
 // Execute a function with a pool connection
-func (p *Pool) WithConnectionTimeout(timeout int64, fn func(c Connection) any) (any, error) {
+func (p *Pool) WithConnectionTimeout(timeout int64, fn func(c Connection, opts *Options) any) (any, error) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
@@ -138,6 +143,11 @@ func (p *Pool) WithConnectionTimeout(timeout int64, fn func(c Connection) any) (
 		defer p.connections.add(conn)
 
 		// Execute the function
-		return fn(*conn), nil
+		return fn(*conn, &Options{
+			ExpiresIn: func(conn *Connection) int64 {
+				var copy int64 = conn.expire
+				return copy
+			},
+		}), nil
 	}
 }
