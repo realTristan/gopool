@@ -47,7 +47,7 @@ func (p *Pool) Add(client *Client, expire int64) error {
 	}
 
 	// If the connection already exists in the pool
-	if p.connections.exists(client) {
+	if p.connections.clientExists(client) {
 		return errors.New("client already exists in connection pool")
 	}
 

@@ -37,8 +37,8 @@ func (q *ConnectionQueue) next() *Connection {
 	return conn
 }
 
-// Check if a client in the pool already exists
-func (q *ConnectionQueue) exists(c *Client) bool {
+// Check if a client already exists in the pool
+func (q *ConnectionQueue) clientExists(c *Client) bool {
 	q.mutex.RLock()
 	defer q.mutex.RUnlock()
 
