@@ -20,7 +20,8 @@ func main() {
 	var pool *gp.Pool[any] = gp.InitPool[any](4)
 
 	// Initalize a client
-	var client *gp.Client[any] = nil // whatever your client is
+	// Replace nil with your client
+	var client *gp.Client[any] = gp.NewClient[any](nil)
 
 	// Add the connection to the pool
 	// Expire in 10 seconds, -1 for no expiration

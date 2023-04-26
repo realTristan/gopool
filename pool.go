@@ -28,12 +28,9 @@ func InitPool[T any](maxSize int) *Pool[T] {
 }
 
 // Get the current pool size
-func (p *Pool[T]) Size() (int, int) {
-	var (
-		copyCurSize int = p.currentConnections
-		copyMaxSize int = p.maxConnections
-	)
-	return copyMaxSize, copyCurSize
+func (p *Pool[T]) Size() int {
+	var copy int = p.currentConnections
+	return copy
 }
 
 // Add a new connection to the connection pool
@@ -79,7 +76,7 @@ func (p *Pool[T]) get() (*Connection[T], error) {
 	}
 
 	// If the connection is not active and has expired
-	if conn.expire > 0 && conn.expire-time.Now().UnixMilli() <= 0 {
+	if conn.expire > 0 && conn.expire-time.Now().Unix() <= 0 {
 		if err := p.connections.delete(conn); err == nil {
 			p.mutex.Lock()
 			p.currentConnections--
@@ -122,9 +119,6 @@ func (p *Pool[T]) WithConnection(fn func(c Connection[T], opts *Options[T]) any)
 		var opts *Options[T] = &Options[T]{
 			DeferDelete:    false,
 			DeferSetExpire: -2,
-			ExpiresAt: func(conn Connection[T]) int64 {
-				return conn.expire
-			},
 		}
 
 		// Add the connection back to the pool once function returns
@@ -158,9 +152,6 @@ func (p *Pool[T]) WithConnectionTimeout(timeout int64, fn func(c Connection[T], 
 		var opts *Options[T] = &Options[T]{
 			DeferDelete:    false,
 			DeferSetExpire: -2,
-			ExpiresAt: func(conn Connection[T]) int64 {
-				return conn.expire
-			},
 		}
 
 		// Add the connection back to the pool once function returns
