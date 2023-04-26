@@ -30,7 +30,7 @@ func main() {
 	})
 
 	// Access a connection from the pool
-	pool.WithConnection(func(conn *gp.Connection[any], opts *gp.Options[any]) any {
+	pool.WithConnection(func(conn gp.Connection[any], opts *gp.Options[any]) any {
 		// Use the connection client
 		conn.WithClient(func(client gp.Client[any]) any {
 			// await client. (... whatever you're trying to do with your database client)

@@ -81,7 +81,9 @@ func (p *Pool[T]) get() (*Connection[T], error) {
 	// If the connection is not active and has expired
 	if conn.expire > 0 && conn.expire-time.Now().UnixMilli() <= 0 {
 		if err := p.connections.delete(conn); err == nil {
+			p.mutex.Lock()
 			p.currentConnections--
+			p.mutex.Unlock()
 			conn.onExpire(conn.client)
 		}
 		return p.get()
@@ -104,52 +106,72 @@ func (p *Pool[T]) getTimeout(timeout int64) (*Connection[T], error) {
 			return nil, errors.New("timeout reached. no available connections could be found")
 		}
 
-		// Get the connection
+		// Get a new connection
 		conn, err = p.get()
 	}
 	return conn, nil
 }
 
 // Execute a function with a pool connection
-func (p *Pool[T]) WithConnection(fn func(c *Connection[T], opts *Options[T]) any) (any, error) {
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
-
+func (p *Pool[T]) WithConnection(fn func(c Connection[T], opts *Options[T]) any) (any, error) {
 	// Get a connection from the connections pool
 	if conn, err := p.get(); err != nil {
 		return nil, err
 	} else {
+		// Initialize the options
+		var opts *Options[T] = &Options[T]{
+			DeferDelete:    false,
+			DeferSetExpire: -2,
+			ExpiresAt: func(conn Connection[T]) int64 {
+				return conn.expire
+			},
+		}
+
 		// Add the connection back to the pool once function returns
-		defer p.connections.add(conn)
+		defer func() {
+			// If the user wants to delete the connection on defer
+			// then they can set the DeferDelete option to true
+			if !opts.DeferDelete {
+				p.connections.add(conn)
+				if opts.DeferSetExpire > -2 {
+					conn.expire = opts.DeferSetExpire
+				}
+			}
+		}()
 
 		// Execute the function
-		return fn(conn, &Options[T]{
-			ExpiresAt: func(conn *Connection[T]) int64 {
-				var copy int64 = conn.expire
-				return copy
-			},
-		}), nil
+		return fn(*conn, opts), nil
 	}
 }
 
 // Execute a function with a pool connection
 func (p *Pool[T]) WithConnectionTimeout(timeout int64, fn func(c Connection[T], opts *Options[T]) any) (any, error) {
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
-
 	// Get a connection from the connections pool
 	if conn, err := p.getTimeout(timeout); err != nil {
 		return nil, err
 	} else {
+		// Initialize the options
+		var opts *Options[T] = &Options[T]{
+			DeferDelete:    false,
+			DeferSetExpire: -2,
+			ExpiresAt: func(conn Connection[T]) int64 {
+				return conn.expire
+			},
+		}
+
 		// Add the connection back to the pool once function returns
-		defer p.connections.add(conn)
+		defer func() {
+			// If the user wants to delete the connection on defer
+			// then they can set the DeferDelete option to true
+			if !opts.DeferDelete {
+				p.connections.add(conn)
+				if opts.DeferSetExpire > -2 {
+					conn.expire = opts.DeferSetExpire
+				}
+			}
+		}()
 
 		// Execute the function
-		return fn(*conn, &Options[T]{
-			ExpiresAt: func(conn *Connection[T]) int64 {
-				var copy int64 = conn.expire
-				return copy
-			},
-		}), nil
+		return fn(*conn, opts), nil
 	}
 }

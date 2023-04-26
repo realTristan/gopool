@@ -8,6 +8,6 @@ type Connection[T any] struct {
 }
 
 // Get the connection client
-func (conn *Connection[T]) WithClient(fn func(c Client[T]) any) any {
+func (conn Connection[T]) WithClient(fn func(c Client[T]) any) any {
 	return fn(*conn.client)
 }
