@@ -133,6 +133,10 @@ func (p *Pool[T]) WithConnection(fn func(c Connection[T], opts *Options[T]) any)
 			// then they can set the DeferDelete option to true
 			if !opts.DeferDelete {
 				p.connections.add(conn)
+
+				// If the user wants to update the connection expiration
+				// on defer, they can set the DeferSetExpire option to
+				// a number greater than -2 (i.e -1 for no expiration or > 0 for an expiration)
 				if opts.DeferSetExpire > -2 {
 					conn.expire = opts.DeferSetExpire
 				}
@@ -161,10 +165,14 @@ func (p *Pool[T]) WithConnectionTimeout(timeout int64, fn func(c Connection[T], 
 
 		// Add the connection back to the pool once function returns
 		defer func() {
-			// If the user wants to delete the connection on defer
-			// then they can set the DeferDelete option to true
+			// If the user wants to delete the connection on defer,
+			// they can set the DeferDelete option to true
 			if !opts.DeferDelete {
 				p.connections.add(conn)
+
+				// If the user wants to update the connection expiration
+				// on defer, they can set the DeferSetExpire option to
+				// a number greater than -2 (i.e -1 for no expiration or > 0 for an expiration)
 				if opts.DeferSetExpire > -2 {
 					conn.expire = opts.DeferSetExpire
 				}
