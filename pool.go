@@ -99,7 +99,7 @@ func (p *Pool[T]) getTimeout(timeout int64) (*Connection[T], error) {
 	)
 	for conn == nil || err != nil {
 		// Check if the provided timeout has been reached
-		if timeout > 0 && start+timeout > time.Now().UnixMilli() {
+		if timeout > 0 && start+timeout <= time.Now().UnixMilli() {
 			return nil, errors.New("timeout reached. no available connections could be found")
 		}
 
@@ -123,17 +123,23 @@ func (p *Pool[T]) WithConnection(fn func(c Connection[T], opts *Options[T]) any)
 
 		// Add the connection back to the pool once function returns
 		defer func() {
-			// If the user wants to delete the connection on defer
-			// then they can set the DeferDelete option to true
-			if !opts.DeferDelete {
-				p.connections.add(conn)
+			// If the user wants to delete the connection on defer,
+			// they can set the DeferDelete option to true
+			if opts.DeferDelete {
+				p.mutex.Lock()
+				p.currentConnections--
+				p.mutex.Unlock()
+				return
+			}
 
-				// If the user wants to update the connection expiration
-				// on defer, they can set the DeferSetExpire option to
-				// a number greater than -2 (i.e -1 for no expiration or > 0 for an expiration)
-				if opts.DeferSetExpire > -2 {
-					conn.expire = opts.DeferSetExpire
-				}
+			// Otherwise, add the connection back
+			p.connections.add(conn)
+
+			// If the user wants to update the connection expiration
+			// on defer, they can set the DeferSetExpire option to
+			// a number greater than -2 (i.e -1 for no expiration or > 0 for an expiration)
+			if opts.DeferSetExpire > -2 {
+				conn.expire = opts.DeferSetExpire
 			}
 		}()
 
@@ -158,15 +164,21 @@ func (p *Pool[T]) WithConnectionTimeout(timeout int64, fn func(c Connection[T], 
 		defer func() {
 			// If the user wants to delete the connection on defer,
 			// they can set the DeferDelete option to true
-			if !opts.DeferDelete {
-				p.connections.add(conn)
+			if opts.DeferDelete {
+				p.mutex.Lock()
+				p.currentConnections--
+				p.mutex.Unlock()
+				return
+			}
 
-				// If the user wants to update the connection expiration
-				// on defer, they can set the DeferSetExpire option to
-				// a number greater than -2 (i.e -1 for no expiration or > 0 for an expiration)
-				if opts.DeferSetExpire > -2 {
-					conn.expire = opts.DeferSetExpire
-				}
+			// Otherwise, add the connection back
+			p.connections.add(conn)
+
+			// If the user wants to update the connection expiration
+			// on defer, they can set the DeferSetExpire option to
+			// a number greater than -2 (i.e -1 for no expiration or > 0 for an expiration)
+			if opts.DeferSetExpire > -2 {
+				conn.expire = opts.DeferSetExpire
 			}
 		}()
 

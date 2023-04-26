@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	gp "github.com/realTristan/gopool"
 )
 
@@ -36,14 +38,19 @@ func main() {
 		return nil
 	})
 
+	// Print the pool size
+	fmt.Println(pool.Size())
+
 	// Access a connection from the pool with a connection timeout
-	var timeout int64 = 1000 // 1000 milliseconds till timeout (1 second)
+	var timeout int64 = 10000 // 10000 milliseconds till timeout (10 second)
 	pool.WithConnectionTimeout(timeout, func(conn gp.Connection[string], opts *gp.Options[string]) any {
 		// Use the connection client
+		opts.DeferDelete = true
 		conn.WithClient(func(client gp.Client[string]) any {
 			// await client. (... whatever you're trying to do with your database client)
 			return nil
 		})
 		return nil
 	})
+	fmt.Println(pool.Size())
 }
