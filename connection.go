@@ -14,6 +14,6 @@ func (conn *Connection[T]) WithClient(fn func(c Client[T]) any) any {
 
 // Get when the connection expires
 func (conn *Connection[T]) ExpiresAt() int64 {
-	var copy = conn.expire
+	var copy int64 = conn.expire
 	return copy
 }
