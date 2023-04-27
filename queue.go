@@ -1,7 +1,6 @@
 package gopool
 
 import (
-	"errors"
 	"sync"
 )
 
@@ -58,7 +57,7 @@ func (q *ConnectionQueue[T]) add(item *Connection[T]) {
 	q.connections = append(q.connections, item)
 }
 
-// Delete an item from the queue
+/* Delete an item from the queue
 func (q *ConnectionQueue[T]) delete(item *Connection[T]) error {
 	q.mutex.Lock()
 	defer q.mutex.Unlock()
@@ -74,3 +73,4 @@ func (q *ConnectionQueue[T]) delete(item *Connection[T]) error {
 	// Return error
 	return errors.New("unable to delete item. it does not exist")
 }
+*/
