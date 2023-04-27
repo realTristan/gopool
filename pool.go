@@ -77,12 +77,17 @@ func (p *Pool[T]) get() (*Connection[T], error) {
 
 	// If the connection is not active and has expired
 	if conn.expire > 0 && conn.expire-time.Now().Unix() <= 0 {
-		if err := p.connections.delete(conn); err == nil {
-			p.mutex.Lock()
-			p.currentConnections--
-			p.mutex.Unlock()
-			conn.onExpire(conn.client)
-		}
+		// Decrement the number of current connections.
+		// No need to delete the connection from the connections pool
+		// since it already gets deleted with the .next() function.
+		p.mutex.Lock()
+		p.currentConnections--
+		p.mutex.Unlock()
+
+		// Call the on expire function provided by the user
+		conn.onExpire(conn.client)
+
+		// Get a different connection
 		return p.get()
 	}
 
