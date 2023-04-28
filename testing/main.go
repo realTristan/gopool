@@ -33,6 +33,11 @@ func main() {
 
 	// Access a connection from the pool
 	pool.WithConnection(func(conn gp.Connection[MyClient], opts *gp.Options[MyClient]) any {
+		fmt.Println(conn.ExpiresAt())
+
+		// Add 10 seconds to the expiration
+		opts.DeferSetExpire = conn.ExpiresAt() + 10
+
 		// Use the connection client
 		conn.WithClient(func(client gp.Client[MyClient]) any {
 			// await client. (... whatever you're trying to do with your database client)
@@ -47,8 +52,12 @@ func main() {
 	// Access a connection from the pool with a connection timeout
 	var timeout int64 = 10000 // 10000 milliseconds till timeout (10 second)
 	pool.WithConnectionTimeout(timeout, func(conn gp.Connection[MyClient], opts *gp.Options[MyClient]) any {
-		// Use the connection client
+		fmt.Println(conn.ExpiresAt())
+
+		// Delete the connection once finished
 		opts.DeferDelete = true
+
+		// Use the connection client
 		conn.WithClient(func(client gp.Client[MyClient]) any {
 			// await client. (... whatever you're trying to do with your database client)
 			return nil
