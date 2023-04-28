@@ -15,14 +15,14 @@ type Pool[T any] struct {
 }
 
 // Initialize the Connection Pool
-func InitPool[T any](maxSize int) *Pool[T] {
+func InitPool[T any](maxConnections int) *Pool[T] {
 	return &Pool[T]{
-		maxConnections:     maxSize,
+		maxConnections:     maxConnections,
 		currentConnections: 0,
 		mutex:              &sync.RWMutex{},
 		connections: &ConnectionQueue[T]{
 			mutex:       &sync.RWMutex{},
-			connections: []*Connection[T]{},
+			connections: make([]*Connection[T], maxConnections),
 		},
 	}
 }
