@@ -28,6 +28,7 @@ func main() {
 	// Expire in 10 seconds, -1 for no expiration
 	// When the connection expires, close the client
 	pool.Add(client, 10, func(client *gp.Client[MyClient]) {
+		fmt.Println("Connection expired")
 		// client.close()
 	})
 
